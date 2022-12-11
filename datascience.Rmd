@@ -1,0 +1,207 @@
+```{r}
+data<-read.csv('comedians (1).csv')
+```
+
+```{r}
+summary(data)
+```
+
+
+```{r}
+library(psych)
+describe(data)
+```
+```{r}
+library(ggplot2)
+```
+```{r}
+p <-ggplot(data, aes(channelname, views))
+p +geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 60, hjust = 1))+scale_y_continuous(labels = scales::comma)
+```
+```{r}
+library(tidyverse)
+
+df_long <- data %>% 
+  gather(pol, value, 'count_pos':'count_neu')
+```
+```{r}
+st<-ggplot(df_long, aes(x = channelname, y = value, fill = pol)) + geom_col(position = position_stack())
+st+ theme(axis.text.x = element_text(angle = 60, hjust = 1))+scale_y_continuous(labels = scales::comma)+scale_fill_manual(values = c("tomato1","gold", "springgreen2"))
+```
+```{r}
+d <- density(data$views)
+```
+
+
+```{r}
+plot(d)
+```
+
+
+```{r}
+data %>% mutate(points_bin = cut(views, breaks=c(0, 2500000, 10000000, 80000000)))
+```
+
+
+```{r}
+library('ggpubr')
+```
+
+```{r}
+hist(data$views)
+```
+```{r}
+data$views_root=sqrt(data$views)
+data$views_logroot=log(data$views_root)
+data$views_log=log(data$views)
+```
+
+```{r}
+describe(data$views_root)
+```
+```{r}
+ggdensity(data$views_root)
+```
+```{r}
+normalize <- function(x) {
+return ((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))}
+```
+
+```{r}
+ggdensity(log(data$tot_comments))
+```
+```{r}
+data$totcomments_log=log(data$tot_comments)
+```
+
+
+```{r}
+ggdensity(data$count_neg)
+```
+```{r}
+shapiro.test(data$views_root)
+```
+```{r}
+data$likes_to_views=data$likes/data$views
+```
+
+```{r}
+data$like_to_dislike=data$likes/data$dislikes
+```
+
+```{r}
+print(cor(data$gender, data$like_to_dislike, method = "pearson"))
+```
+```{r}
+data$perc_pos=data$count_pos/(data$count_pos+data$count_neg)
+print(cor(data$gender, data$perc_pos, method = "pearson"))
+```
+```{r}
+popularity_data<-data.frame(data$channelname, data$gender, data$title, data$views, data$count_pos, data$count_neg, data$likes, data$dislikes, data$dislikes)
+```
+```{r}
+summary(popularity_data)
+```
+
+```{r}
+popularity_data %>% group_by(data.channelname) %>% slice(which.max(data.count_pos/(data.count_pos+data.count_neg)))
+```
+```{r}
+popularity_data %>% group_by(data.channelname) %>% slice(which.min(data.count_pos/(data.count_pos+data.count_neg)))
+```
+```{r}
+most_views<- data %>%                                     
+  arrange(desc(data$views)) %>%
+  slice(1:3)
+print(data.frame(most_views$channelname, most_views$title, most_views$views))
+```
+```{r}
+least_views<- data %>%                                     
+  arrange(data$views) %>%
+  slice(1:3)
+print(data.frame(least_views$channelname, least_views$title, least_views$views))
+```
+```{r}
+most_likes<- data %>%                                     
+  arrange(desc(data$likes)) %>%
+  slice(1:3)
+print(data.frame(most_likes$channelname, most_likes$title, most_likes$likes))
+```
+```{r}
+most_dislikes<- data %>%                                     
+  arrange(desc(data$dislikes)) %>%
+  slice(1:10)
+print(data.frame(most_dislikes$channelname, most_dislikes$title, most_dislikes$dislikes))
+```
+```{r}
+most_comments<- data %>%                                     
+  arrange(desc(data$tot_comments)) %>%
+  slice(1:10)
+print(data.frame(most_comments$channelname, most_comments$title, most_comments$tot_comments, most_comments$count_pos, most_comments$count_neg, most_comments$count_neu))
+```
+```{r}
+install.packages("wordcloud")
+library(wordcloud)
+install.packages("RColorBrewer")
+library(RColorBrewer)
+```
+```{r}
+install.packages("wordcloud2")
+library(wordcloud2)
+```
+```{r}
+install.packages("tm")
+library(tm)
+```
+
+```{r}
+word_data<-read.csv('final_df.csv')
+```
+
+```{r}
+word_data$gender[word_data$channelname == "Urooj Ashfaq"] <- 1
+word_data$gender[word_data$channelname =="Aishwarya Mohanraj"]<-1
+word_data$gender[word_data$channelname =="Aditi Mittal"]<-1
+word_data$gender[word_data$channelname =="Radhika Vaz Comedy"]<-1
+```
+
+```{r}
+men_data<-word_data[word_data$gender == 0, ]
+```
+```{r}
+women_data<-word_data[word_data$gender == 1, ]
+```
+
+
+
+```{r}
+#Create a vector containing only the text
+wom_text <- women_data$comments
+# Create a corpus  
+wom_docs <- Corpus(VectorSource(wom_text))
+```
+
+```{r}
+gsub("https\\S*", "", women_data$text) 
+gsub("@\\S*", "", women_data$text) 
+gsub("amp", "", women_data$text) 
+gsub("[\r\n]", "", women_data$text)
+gsub("[[:punct:]]", "", women_data$text)
+```
+
+```{r}
+wom_docs <- wom_docs %>%tm_map(removeNumbers) %>%tm_map(removePunctuation) %>%tm_map(stripWhitespace)
+wom_docs <- tm_map(wom_docs, content_transformer(tolower))
+wom_docs <- tm_map(wom_docs, removeWords, stopwords("english"))
+```
+```{r}
+install.packages("dplyr")
+library(dbplyr)
+```
+```{r}
+dtm <- TermDocumentMatrix(wom_docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix),decreasing=TRUE) 
+df <- data.frame(word = names(words),freq=words)
+```
+
